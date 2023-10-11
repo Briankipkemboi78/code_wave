@@ -17,8 +17,8 @@ import os
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 
 posts = requests.get("https://api.npoint.io/c790b4d5cab58020d391").json()
-own_email = os.getenv("OWN_EMAIL")
-own_password = os.getenv("OWN_PASSWORD")
+own_email = os.environ.get("OWN_EMAIL")
+own_password = os.environ.get("OWN_PASSWORD")
 
 
 app = Flask(__name__)
