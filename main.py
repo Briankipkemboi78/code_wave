@@ -1,4 +1,6 @@
 from datetime import date
+
+from flask_mail import Mail, Message
 from flask import Flask, abort, render_template, redirect, url_for, flash, request
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
@@ -13,18 +15,25 @@ import requests
 import smtplib
 import os
 
-# Import your forms from the forms.py
-from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
+
 
 posts = requests.get("https://api.npoint.io/c790b4d5cab58020d391").json()
-own_email = os.environ.get("OWN_EMAIL")
-own_password = os.environ.get("OWN_PASSWORD")
+
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("CODEWAVE_SECRET_KEY")
 ckeditor = CKEditor(app)
 Bootstrap5(app)
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Use Gmail's SMTP server
+app.config['MAIL_PORT'] = 587  # Port for secure TLS
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = os.getenv("OWN_EMAIL")
+app.config['MAIL_PASSWORD'] = os.getenv("OWN_PASSWORD")
+
+mail = Mail(app)
 
 # Configure Flask-Login
 login_manager = LoginManager()
@@ -265,19 +274,27 @@ def about():
 def contact():
     if request.method == "POST":
         data = request.form
-        send_email(data["name"],
-                   data["email"],
-                   data["phone"],
-                   data["message"])
-        return render_template("contact.html", msg_sent=True)
-    return render_template("contact.html", msg_sent=False, current_user=current_user)
 
-def send_email(name, email, phone, message):
-    email_message = f"Subject:New Message\n\nName: {name}\nEmail: {email}\nPhone: {phone}\nMessage: {message}"
-    with smtplib.SMTP("smtp.gmail.com") as connection:
-        connection.starttls()
-        connection.login(own_email, own_password)
-        connection.sendmail(own_email, own_email, email_message)
+        name = data["name"]
+        email = data["email"]
+        phone = data["phone"]
+        message = data["message"]
+
+        msg = Message(
+            "New Message",
+            sender=os.getenv("OWN_EMAIL"),
+            recipients=[os.getenv("OWN_EMAIL")]
+        )
+        msg.body = f"Name: {name}\nEmail: {email}\nPhone: {phone}\nMessage: {message}"
+
+        try:
+            mail.send(msg)
+            return render_template("contact.html", msg_sent=True)
+        except Exception as e:
+            print(str(e))  # Print the error for debugging
+            return render_template("contact.html", msg_sent=False)
+
+    return render_template("contact.html", msg_sent=False, current_user=current_user)
 
 
 if __name__ == "__main__":
